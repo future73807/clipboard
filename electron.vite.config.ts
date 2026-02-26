@@ -10,12 +10,25 @@ export default defineConfig({
         '@': resolve(__dirname, './src'),
         '@electron': resolve(__dirname, './electron')
       }
+    },
+    build: {
+      lib: {
+        entry: resolve(__dirname, './electron/main.ts')
+      },
+      outDir: 'out/main'
     }
   },
   preload: {
-    plugins: [externalizeDepsPlugin()]
+    plugins: [externalizeDepsPlugin()],
+    build: {
+      lib: {
+        entry: resolve(__dirname, './electron/preload/index.ts')
+      },
+      outDir: 'out/preload'
+    }
   },
   renderer: {
+    root: __dirname,
     resolve: {
       alias: {
         '@': resolve(__dirname, './src'),
@@ -25,6 +38,9 @@ export default defineConfig({
     plugins: [react()],
     server: {
       port: 5173
+    },
+    build: {
+      outDir: 'out/renderer'
     }
   }
 })

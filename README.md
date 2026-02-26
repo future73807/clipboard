@@ -1,54 +1,72 @@
-# React + TypeScript + Vite
+# 剪贴板管理器（Windows 增强版）
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+一个基于 Electron + React + TypeScript 的 Windows 桌面剪贴板增强应用，支持剪贴板历史、悬浮粘贴、AES-256-GCM 加密、OCR 识别等核心功能。
 
-Currently, two official plugins are available:
+## 项目架构
+- 桌面框架：Electron v28
+- 前端：React 18 + Vite 5 + TypeScript
+- 构建：electron-vite
+- 数据库：SQLite（better-sqlite3）
+- OCR：tesseract.js
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+目录结构：
+- [electron](file:///d:/Desktop/clipboard/electron) 主进程、数据库、加密、OCR、预加载
+- [src](file:///d:/Desktop/clipboard/src) 渲染进程（React UI）
+- [src/components](file:///d:/Desktop/clipboard/src/components) 组件（悬浮窗口等）
+- [src/renderer/index.html](file:///d:/Desktop/clipboard/src/renderer/index.html) 渲染进程入口
 
-## Expanding the ESLint configuration
+## 核心功能
+- 自动记录剪贴板文本、HTML、RTF、图片并持久化
+- 悬浮窗口快速查看与复制最近记录
+- 全局快捷键呼出悬浮窗口（Ctrl+Shift+V）
+- AES-256-GCM 加密存储，支持解锁/启用/禁用
+- OCR 图片文字识别（一键提取复制）
+- 代码片段高亮预览（手动标记）
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+功能路线图与更详细的需求见：[Windows剪贴板软件需求规格文档.md](file:///d:/Desktop/clipboard/Windows剪贴板软件需求规格文档.md)
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
-```
+## 安装步骤
+1. 安装 Node.js（18+ 推荐）
+2. 安装依赖：
+   ```bash
+   npm ci
+   ```
+3. 开发模式运行：
+   ```bash
+   npm run dev
+   ```
+4. 预览（预打包）：
+   ```bash
+   npm run start
+   ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 编译命令
+- 类型检查：
+  ```bash
+  npm run typecheck
+  ```
+- 生产构建（生成 out/main、out/preload、out/renderer）：
+  ```bash
+  npm run build
+  ```
+- 测试与覆盖率（仅针对核心模块）：
+  ```bash
+  npm run test
+  ```
+- 打包安装包（Windows）：
+  ```bash
+  npm run build:win
+  ```
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 贡献指南
+- 分支管理建议采用 Git Flow
+- 提交信息遵循规范：feat/fix/docs/chore 等前缀
+- 在提交 PR 之前：
+  - 运行类型检查与构建：`npm run typecheck && npm run build`
+  - 运行测试并确保通过：`npm run test`
+  - 保持 ESLint 与 Prettier 格式一致：`npm run format`
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+## 作者信息
+- 作者：example.com
+- 邮箱：support@example.com
+- 主页：.*
