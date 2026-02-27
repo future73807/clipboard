@@ -67,9 +67,12 @@ function createMainWindow(): void {
 }
 
 function createFloatingWindow(): void {
+  // 从设置中获取保存的窗口状态
+  const savedState = settings.floatingWindow || { width: 400, height: 600 }
+
   floatingWindow = new BrowserWindow({
-    width: windowState.floating.width,
-    height: windowState.floating.height,
+    width: savedState.width,
+    height: savedState.height,
     minWidth: windowState.floating.minWidth,
     minHeight: windowState.floating.minHeight,
     frame: false,
@@ -82,6 +85,39 @@ function createFloatingWindow(): void {
       sandbox: false,
       contextIsolation: true,
       nodeIntegration: false
+    }
+  })
+
+  // 如果有保存的位置，恢复窗口位置
+  if (savedState.x !== undefined && savedState.y !== undefined) {
+    const primaryDisplay = screen.getPrimaryDisplay()
+    const { width, height } = primaryDisplay.workAreaSize
+
+    // 确保窗口位置在屏幕范围内
+    const x = Math.max(0, Math.min(savedState.x, width - savedState.width))
+    const y = Math.max(0, Math.min(savedState.y, height - savedState.height))
+    floatingWindow.setPosition(x, y)
+  }
+
+  // 监听窗口大小变化，保存状态
+  floatingWindow.on('resize', () => {
+    if (floatingWindow) {
+      const [width, height] = floatingWindow.getSize()
+      const [x, y] = floatingWindow.getPosition()
+      saveSettings({
+        floatingWindow: { x, y, width, height }
+      })
+    }
+  })
+
+  // 监听窗口移动，保存状态
+  floatingWindow.on('move', () => {
+    if (floatingWindow) {
+      const [width, height] = floatingWindow.getSize()
+      const [x, y] = floatingWindow.getPosition()
+      saveSettings({
+        floatingWindow: { x, y, width, height }
+      })
     }
   })
 
@@ -146,21 +182,35 @@ function showFloatingWindow(): void {
   if (!floatingWindow) {
     createFloatingWindow()
   }
-  
+
   if (floatingWindow) {
-    const cursorPoint = require('electron').screen.getCursorScreenPoint()
-    const primaryDisplay = require('electron').screen.getPrimaryDisplay()
+    // 使用保存的位置，如果没有则跟随鼠标
+    const savedState = settings.floatingWindow
+    const primaryDisplay = screen.getPrimaryDisplay()
     const { width, height } = primaryDisplay.workAreaSize
-    
-    let x = cursorPoint.x - windowState.floating.width / 2
-    let y = cursorPoint.y - windowState.floating.height / 2
-    
-    if (x < 0) x = 10
-    if (y < 0) y = 10
-    if (x + windowState.floating.width > width) x = width - windowState.floating.width - 10
-    if (y + windowState.floating.height > height) y = height - windowState.floating.height - 10
-    
-    floatingWindow.setPosition(Math.round(x), Math.round(y))
+
+    if (savedState?.x !== undefined && savedState?.y !== undefined) {
+      // 使用保存的位置，但确保在屏幕范围内
+      const [winWidth, winHeight] = floatingWindow.getSize()
+      const x = Math.max(0, Math.min(savedState.x, width - winWidth))
+      const y = Math.max(0, Math.min(savedState.y, height - winHeight))
+      floatingWindow.setPosition(x, y)
+    } else {
+      // 没有保存的位置，跟随鼠标显示
+      const cursorPoint = screen.getCursorScreenPoint()
+      const [winWidth, winHeight] = floatingWindow.getSize()
+
+      let x = cursorPoint.x - winWidth / 2
+      let y = cursorPoint.y - winHeight / 2
+
+      if (x < 0) x = 10
+      if (y < 0) y = 10
+      if (x + winWidth > width) x = width - winWidth - 10
+      if (y + winHeight > height) y = height - winHeight - 10
+
+      floatingWindow.setPosition(Math.round(x), Math.round(y))
+    }
+
     floatingWindow.show()
     floatingWindow.focus()
   }

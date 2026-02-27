@@ -45,6 +45,7 @@ interface GroupTreeProps {
   onAddGroup?: (name: string, parentId?: string) => void
   onUpdateGroup?: (id: string, name: string) => void
   onDeleteGroup?: (id: string) => void
+  onMoveGroup?: (id: string, newParentId: string | undefined, newSortOrder: number) => void
   className?: string
   maxLevel?: number
 }
@@ -57,6 +58,12 @@ interface TreeNodeProps {
   onAddChild?: (parentId: string) => void
   onUpdate?: (id: string) => void
   onDelete?: (id: string) => void
+  onDragStart?: (e: React.DragEvent, groupId: string) => void
+  onDragOver?: (e: React.DragEvent, groupId: string) => void
+  onDrop?: (e: React.DragEvent, targetGroupId: string, level: number) => void
+  onDragEnd?: () => void
+  draggedGroupId?: string | null
+  dropTargetId?: string | null
   maxLevel: number
 }
 
@@ -68,20 +75,57 @@ function TreeNode({
   onAddChild,
   onUpdate,
   onDelete,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+  draggedGroupId,
+  dropTargetId,
   maxLevel,
 }: TreeNodeProps) {
   const [isExpanded, setIsExpanded] = React.useState(true)
   const hasChildren = group.children && group.children.length > 0
   const isSelected = selectedGroupId === group.id
   const canAddChild = level < maxLevel - 1
+  const isDragging = draggedGroupId === group.id
+  const isDropTarget = dropTargetId === group.id
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('text/plain', group.id)
+    onDragStart?.(e, group.id)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'move'
+    onDragOver?.(e, group.id)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    onDrop?.(e, group.id, level)
+    onDragEnd?.()
+  }
+
+  const handleDragEnd = () => {
+    onDragEnd?.()
+  }
 
   return (
     <div className="select-none">
       <div
+        draggable
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        onDragEnd={handleDragEnd}
         className={cn(
           'flex items-center gap-1 py-1.5 px-2 rounded-md cursor-pointer transition-colors',
           'hover:bg-accent',
-          isSelected && 'bg-primary/10 text-primary'
+          isSelected && 'bg-primary/10 text-primary',
+          isDragging && 'opacity-50',
+          isDropTarget && 'ring-2 ring-primary ring-inset'
         )}
         style={{ paddingLeft: `${level * 12 + 8}px` }}
       >
@@ -166,6 +210,12 @@ function TreeNode({
               onAddChild={onAddChild}
               onUpdate={onUpdate}
               onDelete={onDelete}
+              onDragStart={onDragStart}
+              onDragOver={onDragOver}
+              onDrop={onDrop}
+              onDragEnd={onDragEnd}
+              draggedGroupId={draggedGroupId}
+              dropTargetId={dropTargetId}
               maxLevel={maxLevel}
             />
           ))}
@@ -182,6 +232,7 @@ export function GroupTree({
   onAddGroup,
   onUpdateGroup,
   onDeleteGroup,
+  onMoveGroup,
   className,
   maxLevel = 3,
 }: GroupTreeProps) {
@@ -190,6 +241,10 @@ export function GroupTree({
   const [newGroupName, setNewGroupName] = React.useState('')
   const [editingGroup, setEditingGroup] = React.useState<Group | null>(null)
   const [addingToParentId, setAddingToParentId] = React.useState<string | undefined>()
+
+  // 拖拽状态
+  const [draggedGroupId, setDraggedGroupId] = React.useState<string | null>(null)
+  const [dropTargetId, setDropTargetId] = React.useState<string | null>(null)
 
   // 构建树形结构
   const buildTree = (items: Group[]): Group[] => {
@@ -226,6 +281,56 @@ export function GroupTree({
   }
 
   const treeData = React.useMemo(() => buildTree(groups), [groups])
+
+  // 拖拽处理
+  const handleDragStart = (_e: React.DragEvent, groupId: string) => {
+    setDraggedGroupId(groupId)
+  }
+
+  const handleDragOver = (e: React.DragEvent, groupId: string) => {
+    // 不能拖到自己身上，也不能拖到自己的子节点上
+    if (draggedGroupId !== groupId) {
+      setDropTargetId(groupId)
+    }
+  }
+
+  const handleDrop = (e: React.DragEvent, targetGroupId: string, targetLevel: number) => {
+    if (!draggedGroupId || draggedGroupId === targetGroupId) return
+
+    // 检查是否试图拖到自己的子节点
+    const isDescendant = (parentId: string, childId: string): boolean => {
+      const parent = groups.find(g => g.id === parentId)
+      if (!parent) return false
+      if (parent.parentId === childId) return true
+      return isDescendant(parent.parentId || '', childId)
+    }
+
+    const draggedGroup = groups.find(g => g.id === draggedGroupId)
+    if (draggedGroup && isDescendant(targetGroupId, draggedGroupId)) {
+      return // 不能拖到自己的子节点
+    }
+
+    // 计算新的父节点
+    // 如果目标层级比拖拽节点高或相同，则新父节点为目标节点的父节点
+    // 如果目标层级比拖拽节点低，则新父节点为目标节点
+    const targetGroup = groups.find(g => g.id === targetGroupId)
+
+    if (targetGroup) {
+      // 简单策略：将拖拽节点移动到目标节点同级（作为兄弟节点）
+      const newParentId = targetGroup.parentId
+      const newSortOrder = targetGroup.sortOrder + 0.5 // 插入到目标节点后面
+
+      onMoveGroup?.(draggedGroupId, newParentId, newSortOrder)
+    }
+
+    setDraggedGroupId(null)
+    setDropTargetId(null)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedGroupId(null)
+    setDropTargetId(null)
+  }
 
   const handleAddGroup = (parentId?: string) => {
     setAddingToParentId(parentId)
@@ -300,6 +405,12 @@ export function GroupTree({
           onAddChild={handleAddGroup}
           onUpdate={handleEditGroup}
           onDelete={onDeleteGroup}
+          onDragStart={handleDragStart}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+          onDragEnd={handleDragEnd}
+          draggedGroupId={draggedGroupId}
+          dropTargetId={dropTargetId}
           maxLevel={maxLevel}
         />
       ))}

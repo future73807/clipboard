@@ -439,9 +439,9 @@ CREATE INDEX idx_item_versions ON versions(item_id);
 - [x] 悬浮窗是否支持拖拽调整大小？ (Electron resizable)
 - [x] 悬浮窗最小尺寸是否符合要求？ (300x400, 文档要求 240x160)
 - [x] 悬浮窗最大尺寸是否限制在屏幕工作区内？ (workAreaSize 检查)
-- [ ] 悬浮窗拖拽位置是否能在重启后正确恢复？ (待实现持久化)
+- [x] 悬浮窗拖拽位置是否能在重启后正确恢复？ (settings.ts 持久化)
 - [x] 所有动画是否平滑流畅？ (Framer Motion)
-- [ ] 深色/浅色主题是否正确切换？ (当前仅支持深色主题)
+- [x] 深色/浅色主题是否正确切换？ (useTheme hook + ThemeToggle 组件)
 
 ### 数据类型验证
 - [x] **文本**: Markdown 是否正确渲染？ (react-markdown + remark-gfm)
@@ -454,7 +454,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
 
 ### 分组与标签功能
 - [x] 分组树形结构是否正常显示？ (GroupTree 组件)
-- [ ] 拖拽分组是否正确调整层级？ (待实现拖拽功能)
+- [x] 拖拽分组是否正确调整层级？ (HTML5 Drag & Drop API)
 - [x] 标签是否正确关联到条目？ (TagSelector 组件)
 - [ ] 打标签是否自动触发版本快照？ (待验证)
 - [x] 标签筛选是否正常工作？ (database.ts searchByTag)

@@ -9,6 +9,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import {
   FileText,
   Image,
@@ -200,25 +201,38 @@ export function Sidebar({
 
         {/* Footer */}
         <div className="border-t border-border p-2">
-          {collapsed ? (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="w-full"
-                >
+          <div className="flex items-center gap-1">
+            {collapsed ? (
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <ThemeToggle />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">切换主题</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="flex-1"
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">设置</TooltipContent>
+                </Tooltip>
+              </>
+            ) : (
+              <>
+                <ThemeToggle />
+                <Button variant="ghost" className="flex-1 justify-start gap-2">
                   <Settings className="h-4 w-4" />
+                  设置
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">设置</TooltipContent>
-            </Tooltip>
-          ) : (
-            <Button variant="ghost" className="w-full justify-start gap-2">
-              <Settings className="h-4 w-4" />
-              设置
-            </Button>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </TooltipProvider>
