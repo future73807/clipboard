@@ -456,7 +456,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
 - [x] 分组树形结构是否正常显示？ (GroupTree 组件)
 - [x] 拖拽分组是否正确调整层级？ (HTML5 Drag & Drop API)
 - [x] 标签是否正确关联到条目？ (TagSelector 组件)
-- [ ] 打标签是否自动触发版本快照？ (待验证)
+- [x] 打标签是否自动触发版本快照？ (database.ts updateClipboardItem)
 - [x] 标签筛选是否正常工作？ (database.ts searchByTag)
 
 ### 系统集成
@@ -474,7 +474,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
 - [x] 密码管理器单元测试 (16 tests)
 - [x] 工具函数单元测试 (18 tests)
 - [x] 文件图标解析测试 (59 tests)
-- [ ] 版本差异算法测试
+- [x] 版本差异算法测试 (20 tests)
 - [ ] E2E 测试
 
 ## 7. 构建与运行

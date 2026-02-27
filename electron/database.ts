@@ -287,6 +287,35 @@ export function updateClipboardItem(id: string, updates: Partial<ClipboardHistor
   const db = getDatabase()
 
   try {
+    // 如果是更新标签，先获取当前内容创建版本快照
+    if (updates.tags !== undefined) {
+      const currentStmt = db.prepare('SELECT content, tags FROM clipboard_history WHERE id = ?')
+      const currentRow = currentStmt.get(id) as any
+
+      if (currentRow) {
+        // 创建版本快照
+        const crypto = require('node:crypto')
+        const hash = crypto.createHash('sha256').update(currentRow.content).digest('hex')
+
+        const oldTags = currentRow.tags ? JSON.parse(currentRow.tags) : []
+        const newTags = updates.tags
+        const changes = JSON.stringify({
+          type: 'tags_update',
+          oldTags,
+          newTags,
+          timestamp: new Date().toISOString()
+        })
+
+        // 插入版本快照
+        const versionStmt = db.prepare(`
+          INSERT INTO versions (id, item_id, content, hash, changes)
+          VALUES (?, ?, ?, ?, ?)
+        `)
+        versionStmt.run(uuidv4(), id, currentRow.content, hash, changes)
+        console.log('标签更新触发版本快照:', id)
+      }
+    }
+
     const fields: string[] = []
     const values: any[] = []
 
