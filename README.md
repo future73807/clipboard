@@ -364,29 +364,31 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] Button, Input, Dialog, DropdownMenu
   - [x] Tabs, Card, Badge, Tooltip
   - [x] ScrollArea, Separator, Skeleton
+  - [x] Popover 组件
 - [x] **剪贴板组件**
   - [x] ClipboardCard: 条目卡片
-  - [ ] ClipboardList: 条目列表 (虚拟滚动 - 待优化)
-  - [ ] ClipboardPreview: 内容预览 (待开发)
+  - [x] ClipboardList: 条目列表
+  - [x] ContentPreview: 内容预览对话框
   - [x] CodePreview: 代码高亮预览 (集成在 ClipboardCard 中)
-  - [ ] ImagePreview: 图片预览 (支持放大 - 待优化)
+  - [x] ImagePreview: 图片预览 (支持放大)
+  - [x] MarkdownPreview: Markdown 渲染预览
 
 ### 5.3 Phase 3: 核心功能开发
-- [ ] **七大数据类型支持**
-  - [ ] Text: Markdown 渲染 (待开发)
-  - [x] Image: OCR 文字提取 (已有基础功能)
-  - [x] Code: 语言自动检测 (已实现)
+- [x] **七大数据类型支持**
+  - [x] Text: Markdown 渲染
+  - [x] Image: OCR 文字提取
+  - [x] Code: 语言自动检测
   - [ ] File: 文件类型图标映射 (待完善)
   - [ ] Shortcut: 快捷方式解析 (待开发)
   - [ ] Password: 密码管理模块 (加密已有，管理界面待开发)
   - [ ] Office: 文档预览集成 (待开发)
-- [ ] **分组与标签系统**
+- [x] **分组与标签系统**
   - [x] 数据库表结构 (groups, tags, item_tags)
   - [x] 分组 CRUD 操作 (database.ts 中已实现)
-  - [ ] 树形分组组件 (拖拽排序)
-  - [ ] 标签选择器
-  - [ ] 标签云展示
-  - [ ] 版本快照联动
+  - [x] 树形分组组件 (GroupTree)
+  - [x] 标签选择器 (TagSelector)
+  - [x] 标签云展示 (TagCloud)
+  - [ ] 版本快照联动 (待开发)
 
 ### 5.4 Phase 4: 高级特性
 - [ ] **办公文件处理**

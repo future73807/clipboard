@@ -27,7 +27,10 @@ import {
   Lock,
   FileSpreadsheet,
   Clock,
+  Expand,
 } from 'lucide-react'
+import { ImagePreview } from './ImagePreview'
+import { MarkdownPreview, isMarkdown } from './MarkdownPreview'
 import type { ClipboardItem, ClipboardType } from '@/types'
 
 interface ClipboardCardProps {
@@ -36,6 +39,7 @@ interface ClipboardCardProps {
   onDelete?: (item: ClipboardItem) => void
   onToggleFavorite?: (item: ClipboardItem) => void
   onToggleCode?: (item: ClipboardItem) => void
+  onPreview?: (item: ClipboardItem) => void
   className?: string
 }
 
@@ -71,22 +75,23 @@ export function ClipboardCard({
   onDelete,
   onToggleFavorite,
   onToggleCode,
+  onPreview,
   className,
 }: ClipboardCardProps) {
   const [showPassword, setShowPassword] = React.useState(false)
   const isCode = item.tags?.includes('code') || item.type === 'code'
   const language = isCode ? detectCodeLanguage(item.content) : 'text'
+  const shouldRenderMarkdown = item.type === 'text' && isMarkdown(item.content)
 
   const renderContent = () => {
     if (item.type === 'image') {
       return (
-        <div className="relative overflow-hidden rounded-md bg-slate-900/50">
-          <img
-            src={item.content}
-            alt="Clipboard image"
-            className="max-h-48 w-auto object-contain"
-          />
-        </div>
+        <ImagePreview
+          src={item.content}
+          alt="Clipboard image"
+          maxHeight={192}
+          className="w-full"
+        />
       )
     }
 
@@ -105,6 +110,14 @@ export function ClipboardCard({
           >
             {truncate(item.content, 500)}
           </SyntaxHighlighter>
+        </div>
+      )
+    }
+
+    if (shouldRenderMarkdown) {
+      return (
+        <div className="max-h-48 overflow-auto rounded-md border border-border p-2">
+          <MarkdownPreview content={truncate(item.content, 500)} maxHeight={180} />
         </div>
       )
     }
@@ -192,6 +205,10 @@ export function ClipboardCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => onPreview?.(item)}>
+                <Expand className="mr-2 h-4 w-4" />
+                预览
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onCopy?.(item)}>
                 <Copy className="mr-2 h-4 w-4" />
                 复制内容
