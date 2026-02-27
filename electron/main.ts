@@ -1,4 +1,5 @@
 import { app, shell, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen } from 'electron'
+import type { Event } from 'electron'
 import { join } from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { WindowState, ClipboardContent, ClipboardHistoryItem } from './types'
@@ -9,6 +10,9 @@ import { scryptSync, randomBytes } from 'node:crypto'
 import { recognizeText } from './ocr'
 import { detectContentType } from './utils'
 import { registerContextMenu, unregisterContextMenu, isContextMenuRegistered, handleContextMenuArgs } from './contextMenu'
+
+// 全局退出标志
+let isQuitting = false
 
 const windowState: WindowState = {
   main: {
@@ -52,6 +56,20 @@ function createMainWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
+  })
+
+  // 关闭窗口时隐藏到系统托盘而不是退出
+  mainWindow.on('close', (event: Event) => {
+    if (!isQuitting) {
+      event.preventDefault()
+      mainWindow?.hide()
+    }
+  })
+
+  // 最小化时隐藏到系统托盘
+  mainWindow.on('minimize', (event: Event) => {
+    event.preventDefault()
+    mainWindow?.hide()
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -415,17 +433,20 @@ app.whenReady().then(() => {
   })
 })
 
+// 不在关闭窗口时退出应用，保持托盘运行
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
-    stopClipboardMonitoring()
-    app.quit()
-  }
+  // 不执行任何操作，保持应用在托盘运行
+  // 用户需要通过托盘菜单退出
+})
+
+app.on('before-quit', () => {
+  isQuitting = true
 })
 
 app.on('will-quit', () => {
   globalShortcut.unregisterAll()
   stopClipboardMonitoring()
-  
+
   // 关闭数据库连接
   try {
     const { closeDatabase } = require('./database')
