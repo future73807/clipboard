@@ -21,19 +21,22 @@ export function ThemeProvider({
   defaultTheme = 'auto',
   storageKey = 'clipboard-theme'
 }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<Theme>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(storageKey) as Theme | null
-      if (stored && ['light', 'dark', 'auto'].includes(stored)) {
-        return stored
-      }
-    }
-    return defaultTheme
-  })
-
+  const [theme, setThemeState] = useState<Theme>(defaultTheme)
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark')
+  const [mounted, setMounted] = useState(false)
+
+  // 在组件挂载后从 localStorage 读取主题
+  useEffect(() => {
+    const stored = localStorage.getItem(storageKey) as Theme | null
+    if (stored && ['light', 'dark', 'auto'].includes(stored)) {
+      setThemeState(stored)
+    }
+    setMounted(true)
+  }, [storageKey])
 
   useEffect(() => {
+    if (!mounted) return
+
     const root = window.document.documentElement
 
     // 移除之前的主题类
@@ -53,11 +56,11 @@ export function ThemeProvider({
 
     // 保存到 localStorage
     localStorage.setItem(storageKey, theme)
-  }, [theme, storageKey])
+  }, [theme, storageKey, mounted])
 
   // 监听系统主题变化
   useEffect(() => {
-    if (theme !== 'auto') return
+    if (!mounted || theme !== 'auto') return
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: light)')
     const handleChange = (e: MediaQueryListEvent) => {
@@ -70,7 +73,7 @@ export function ThemeProvider({
 
     mediaQuery.addEventListener('change', handleChange)
     return () => mediaQuery.removeEventListener('change', handleChange)
-  }, [theme])
+  }, [theme, mounted])
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme)
