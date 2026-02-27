@@ -378,9 +378,9 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] Text: Markdown 渲染
   - [x] Image: OCR 文字提取
   - [x] Code: 语言自动检测
-  - [ ] File: 文件类型图标映射 (待完善)
-  - [ ] Shortcut: 快捷方式解析 (待开发)
-  - [ ] Password: 密码管理模块 (加密已有，管理界面待开发)
+  - [x] File: 文件类型图标映射 (FileIcon 组件)
+  - [x] Shortcut: 快捷方式解析 (shortcut.ts 模块)
+  - [x] Password: 密码管理模块 (PasswordManager 组件)
   - [ ] Office: 文档预览集成 (待开发)
 - [x] **分组与标签系统**
   - [x] 数据库表结构 (groups, tags, item_tags)
@@ -388,7 +388,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] 树形分组组件 (GroupTree)
   - [x] 标签选择器 (TagSelector)
   - [x] 标签云展示 (TagCloud)
-  - [ ] 版本快照联动 (待开发)
+  - [x] 版本快照联动 (VersionHistory 组件)
 
 ### 5.4 Phase 4: 高级特性
 - [ ] **办公文件处理**
