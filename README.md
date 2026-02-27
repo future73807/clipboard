@@ -345,41 +345,44 @@ CREATE INDEX idx_item_versions ON versions(item_id);
 ## 5. 开发任务分解 (Roadmap)
 
 ### 5.1 Phase 1: 基础架构重构
-- [ ] **项目结构调整**
-  - [ ] 引入 Tailwind CSS
-  - [ ] 安装并配置 shadcn/ui 组件库
-  - [ ] 重构目录结构
-- [ ] **数据库重构**
-  - [ ] 新增 groups、tags、versions、passwords、office_files 表
-  - [ ] 扩展 clipboard_history 表字段
-  - [ ] 编写数据库迁移脚本
+- [x] **项目结构调整**
+  - [x] 引入 Tailwind CSS v4
+  - [x] 安装并配置 shadcn/ui 组件库
+  - [x] 重构目录结构
+- [x] **数据库重构**
+  - [x] 新增 groups、tags、versions 表
+  - [x] 扩展 clipboard_history 表字段 (group_id, tags, metadata 等)
+  - [x] 创建数据库索引
+  - [ ] 编写数据库迁移脚本 (可选优化)
 
 ### 5.2 Phase 2: UI 组件开发
-- [ ] **布局组件**
-  - [ ] MainLayout: 全宽主布局 (Sidebar + Main)
-  - [ ] Sidebar: 分类导航栏 (可折叠)
-  - [ ] FloatingLayout: 悬浮窗布局
-- [ ] **基础组件** (shadcn/ui)
-  - [ ] Button, Input, Dialog, DropdownMenu
-  - [ ] Tabs, Card, Badge, Tooltip
-  - [ ] ScrollArea, Separator, Skeleton
-- [ ] **剪贴板组件**
-  - [ ] ClipboardCard: 条目卡片
-  - [ ] ClipboardList: 条目列表 (虚拟滚动)
-  - [ ] ClipboardPreview: 内容预览
-  - [ ] CodePreview: 代码高亮预览
-  - [ ] ImagePreview: 图片预览 (支持放大)
+- [x] **布局组件**
+  - [x] MainLayout: 全宽主布局 (Sidebar + Main)
+  - [x] Sidebar: 分类导航栏 (可折叠)
+  - [x] FloatingLayout: 悬浮窗布局
+- [x] **基础组件** (shadcn/ui)
+  - [x] Button, Input, Dialog, DropdownMenu
+  - [x] Tabs, Card, Badge, Tooltip
+  - [x] ScrollArea, Separator, Skeleton
+- [x] **剪贴板组件**
+  - [x] ClipboardCard: 条目卡片
+  - [ ] ClipboardList: 条目列表 (虚拟滚动 - 待优化)
+  - [ ] ClipboardPreview: 内容预览 (待开发)
+  - [x] CodePreview: 代码高亮预览 (集成在 ClipboardCard 中)
+  - [ ] ImagePreview: 图片预览 (支持放大 - 待优化)
 
 ### 5.3 Phase 3: 核心功能开发
 - [ ] **七大数据类型支持**
-  - [ ] Text: Markdown 渲染
-  - [ ] Image: OCR 文字提取优化
-  - [ ] Code: 语言自动检测
-  - [ ] File: 文件类型图标映射
-  - [ ] Shortcut: 快捷方式解析
-  - [ ] Password: 密码管理模块
-  - [ ] Office: 文档预览集成
+  - [ ] Text: Markdown 渲染 (待开发)
+  - [x] Image: OCR 文字提取 (已有基础功能)
+  - [x] Code: 语言自动检测 (已实现)
+  - [ ] File: 文件类型图标映射 (待完善)
+  - [ ] Shortcut: 快捷方式解析 (待开发)
+  - [ ] Password: 密码管理模块 (加密已有，管理界面待开发)
+  - [ ] Office: 文档预览集成 (待开发)
 - [ ] **分组与标签系统**
+  - [x] 数据库表结构 (groups, tags, item_tags)
+  - [x] 分组 CRUD 操作 (database.ts 中已实现)
   - [ ] 树形分组组件 (拖拽排序)
   - [ ] 标签选择器
   - [ ] 标签云展示
@@ -404,7 +407,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [ ] 文件解析测试
   - [ ] 版本差异算法测试
 - [ ] **性能优化**
-  - [ ] 虚拟滚动实现
+  - [ ] 虚拟滚动实现 (react-window)
   - [ ] 搜索性能优化
   - [ ] 内存泄漏排查
 
