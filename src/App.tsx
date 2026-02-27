@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { Sidebar } from '@/components/layout/Sidebar'
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { useDebounce } from '@/hooks'
 import {
   Dialog,
   DialogContent,
@@ -55,6 +56,9 @@ function App() {
   const [passwordInput, setPasswordInput] = useState('')
   const [passwordMode, setPasswordMode] = useState<'enable' | 'unlock' | 'disable'>('unlock')
   const [showPassword, setShowPassword] = useState(false)
+
+  // 对搜索词进行防抖优化
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   useEffect(() => {
     loadClipboardHistory()
@@ -203,13 +207,18 @@ function App() {
     setPasswordInput('')
   }
 
-  const filteredHistory = clipboardHistory.filter((item) => {
-    const matchesSearch = item.content.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType =
-      activeType === 'all' ||
-      (activeType === 'favorites' ? item.isFavorite : item.type === activeType)
-    return matchesSearch && matchesType
-  })
+  // 使用 useMemo 优化过滤性能，配合防抖搜索词
+  const filteredHistory = useMemo(() => {
+    const searchLower = debouncedSearchTerm.toLowerCase()
+    return clipboardHistory.filter((item) => {
+      const matchesSearch =
+        !debouncedSearchTerm || item.content.toLowerCase().includes(searchLower)
+      const matchesType =
+        activeType === 'all' ||
+        (activeType === 'favorites' ? item.isFavorite : item.type === activeType)
+      return matchesSearch && matchesType
+    })
+  }, [clipboardHistory, debouncedSearchTerm, activeType])
 
   const typeLabels: Record<ClipboardType | 'all' | 'favorites', string> = {
     all: '全部',

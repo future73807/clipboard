@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { useDebounce } from '@/hooks'
 import {
   Search,
   Copy,
@@ -51,6 +52,9 @@ function FloatingWindow() {
   const [clipboardHistory, setClipboardHistory] = useState<ClipboardItem[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [activeType, setActiveType] = useState<ClipboardType | 'all'>('all')
+
+  // 对搜索词进行防抖优化
+  const debouncedSearchTerm = useDebounce(searchTerm, 300)
 
   useEffect(() => {
     loadClipboardHistory()
@@ -103,11 +107,16 @@ function FloatingWindow() {
     }
   }
 
-  const filteredHistory = clipboardHistory.filter((item) => {
-    const matchesSearch = item.content.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesType = activeType === 'all' || item.type === activeType
-    return matchesSearch && matchesType
-  })
+  // 使用 useMemo 优化过滤性能，配合防抖搜索词
+  const filteredHistory = useMemo(() => {
+    const searchLower = debouncedSearchTerm.toLowerCase()
+    return clipboardHistory.filter((item) => {
+      const matchesSearch =
+        !debouncedSearchTerm || item.content.toLowerCase().includes(searchLower)
+      const matchesType = activeType === 'all' || item.type === activeType
+      return matchesSearch && matchesType
+    })
+  }, [clipboardHistory, debouncedSearchTerm, activeType])
 
   const types: (ClipboardType | 'all')[] = [
     'all',
