@@ -24,6 +24,7 @@
     "@electron-toolkit/preload": "^3.0.0",
     "@electron-toolkit/utils": "^3.0.0",
     "@radix-ui/react-popover": "^1.1.15",
+    "@tanstack/react-virtual": "^3.13.19",
     "@types/react-window": "^1.8.8",
     "better-sqlite3": "^9.6.0",
     "electron-updater": "^6.1.7",
