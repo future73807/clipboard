@@ -1,4 +1,4 @@
-import { app, shell, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage } from 'electron'
+import { app, shell, BrowserWindow, ipcMain, clipboard, globalShortcut, Tray, Menu, nativeImage, screen } from 'electron'
 import { join } from 'node:path'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 import { WindowState, ClipboardContent, ClipboardHistoryItem } from './types'
@@ -8,6 +8,7 @@ import { encrypt, decrypt } from './crypto'
 import { scryptSync, randomBytes } from 'node:crypto'
 import { recognizeText } from './ocr'
 import { detectContentType } from './utils'
+import { registerContextMenu, unregisterContextMenu, isContextMenuRegistered, handleContextMenuArgs } from './contextMenu'
 
 const windowState: WindowState = {
   main: {
@@ -614,5 +615,169 @@ ipcMain.handle('ocr-image', async (_, imageBase64: string) => {
   } catch (error) {
     console.error('OCR failed:', error)
     return { success: false, error: 'OCR failed' }
+  }
+})
+
+// 右键菜单相关
+ipcMain.handle('register-context-menu', async () => {
+  return await registerContextMenu()
+})
+
+ipcMain.handle('unregister-context-menu', async () => {
+  return await unregisterContextMenu()
+})
+
+ipcMain.handle('get-context-menu-status', async () => {
+  const registered = await isContextMenuRegistered()
+  return { registered }
+})
+
+// 快捷键相关
+ipcMain.handle('register-shortcut', async (_, shortcut: string, action: string) => {
+  try {
+    const success = globalShortcut.register(shortcut, () => {
+      switch (action) {
+        case 'show-main':
+          if (mainWindow) {
+            mainWindow.show()
+            mainWindow.focus()
+          }
+          break
+        case 'show-floating':
+          showFloatingWindow()
+          break
+        case 'toggle-main':
+          if (mainWindow) {
+            if (mainWindow.isVisible()) {
+              mainWindow.hide()
+            } else {
+              mainWindow.show()
+              mainWindow.focus()
+            }
+          }
+          break
+        default:
+          console.log('Unknown action:', action)
+      }
+    })
+    return { success }
+  } catch (error) {
+    console.error('注册快捷键失败:', error)
+    return { success: false, error: '注册快捷键失败' }
+  }
+})
+
+ipcMain.handle('unregister-shortcut', async (_, shortcut: string) => {
+  try {
+    globalShortcut.unregister(shortcut)
+    return { success: true }
+  } catch (error) {
+    console.error('注销快捷键失败:', error)
+    return { success: false, error: '注销快捷键失败' }
+  }
+})
+
+// 复制监听确认相关
+let copyConfirmWindow: BrowserWindow | null = null
+
+function createCopyConfirmWindow(content: string, position: { x: number; y: number }): void {
+  if (copyConfirmWindow) {
+    copyConfirmWindow.close()
+  }
+
+  copyConfirmWindow = new BrowserWindow({
+    width: 260,
+    height: 100,
+    frame: false,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    transparent: true,
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  })
+
+  // 设置窗口位置
+  const display = screen.getDisplayNearestPoint(position)
+  const { width: screenWidth, height: screenHeight } = display.workAreaSize
+  let x = position.x
+  let y = position.y + 20
+
+  // 确保窗口在屏幕内
+  if (x + 260 > screenWidth) x = screenWidth - 270
+  if (y + 100 > screenHeight) y = position.y - 110
+
+  copyConfirmWindow.setPosition(Math.round(x), Math.round(y))
+
+  // 传递内容
+  if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
+    copyConfirmWindow.loadURL(process.env['ELECTRON_RENDERER_URL'] + '#/copy-confirm?content=' + encodeURIComponent(content))
+  } else {
+    copyConfirmWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      hash: '#/copy-confirm?content=' + encodeURIComponent(content)
+    })
+  }
+
+  // 3秒后自动关闭
+  setTimeout(() => {
+    copyConfirmWindow?.close()
+    copyConfirmWindow = null
+  }, 3000)
+
+  copyConfirmWindow.on('closed', () => {
+    copyConfirmWindow = null
+  })
+}
+
+ipcMain.on('clipboard-save', (_, content: string) => {
+  // 保存剪贴板内容
+  const newItem: ClipboardHistoryItem = {
+    id: Date.now().toString(),
+    content,
+    type: detectContentType(content),
+    timestamp: new Date().toISOString(),
+    size: content.length
+  }
+
+  try {
+    addClipboardItem({
+      content: newItem.content,
+      type: newItem.type,
+      timestamp: newItem.timestamp,
+      size: newItem.size
+    })
+
+    mainWindow?.webContents.send('clipboard-changed', newItem)
+    floatingWindow?.webContents.send('clipboard-changed', newItem)
+  } catch (error) {
+    console.error('保存剪贴板内容失败:', error)
+  }
+})
+
+ipcMain.on('show-save-options', (_, content: string) => {
+  // 显示更多选项对话框
+  if (mainWindow) {
+    mainWindow.show()
+    mainWindow.focus()
+    mainWindow.webContents.send('show-save-options-dialog', content)
+  }
+})
+
+// 处理从右键菜单启动的参数
+app.on('second-instance', (_, argv) => {
+  const args = handleContextMenuArgs(argv)
+  if (args) {
+    if (args.action === 'add-file') {
+      // 显示主窗口并添加文件
+      if (mainWindow) {
+        mainWindow.show()
+        mainWindow.focus()
+        mainWindow.webContents.send('add-file-from-context-menu', args.path)
+      }
+    }
   }
 })

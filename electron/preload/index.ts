@@ -14,7 +14,7 @@ export interface ElectronAPI {
   onClipboardChanged: (callback: (content: any) => void) => void
   onPasteFromHistory: (callback: (index: number) => void) => void
   removeAllListeners: (channel: string) => void
-  
+
   // Encryption
   enableEncryption: (password: string) => Promise<{ success: boolean; error?: string }>
   unlockEncryption: (password: string) => Promise<{ success: boolean; error?: string }>
@@ -23,6 +23,21 @@ export interface ElectronAPI {
 
   // OCR
   ocrImage: (imageBase64: string) => Promise<{ success: boolean; text?: string; error?: string }>
+
+  // Context Menu
+  registerContextMenu: () => Promise<{ success: boolean; error?: string }>
+  unregisterContextMenu: () => Promise<{ success: boolean; error?: string }>
+  getContextMenuStatus: () => Promise<{ registered: boolean }>
+
+  // Shortcuts
+  registerShortcut: (shortcut: string, action: string) => Promise<{ success: boolean; error?: string }>
+  unregisterShortcut: (shortcut: string) => Promise<{ success: boolean; error?: string }>
+
+  // Copy Confirm
+  clipboardSave: (content: string) => void
+  showSaveOptions: (content: string) => void
+  onShowSaveOptionsDialog: (callback: (content: string) => void) => void
+  onAddFileFromContextMenu: (callback: (path: string) => void) => void
 }
 
 const electronAPI: ElectronAPI = {
@@ -54,7 +69,26 @@ const electronAPI: ElectronAPI = {
   disableEncryption: (password: string) => ipcRenderer.invoke('disable-encryption', password),
   getEncryptionStatus: () => ipcRenderer.invoke('get-encryption-status'),
 
-  ocrImage: (imageBase64: string) => ipcRenderer.invoke('ocr-image', imageBase64)
+  ocrImage: (imageBase64: string) => ipcRenderer.invoke('ocr-image', imageBase64),
+
+  // Context Menu
+  registerContextMenu: () => ipcRenderer.invoke('register-context-menu'),
+  unregisterContextMenu: () => ipcRenderer.invoke('unregister-context-menu'),
+  getContextMenuStatus: () => ipcRenderer.invoke('get-context-menu-status'),
+
+  // Shortcuts
+  registerShortcut: (shortcut: string, action: string) => ipcRenderer.invoke('register-shortcut', shortcut, action),
+  unregisterShortcut: (shortcut: string) => ipcRenderer.invoke('unregister-shortcut', shortcut),
+
+  // Copy Confirm
+  clipboardSave: (content: string) => ipcRenderer.send('clipboard-save', content),
+  showSaveOptions: (content: string) => ipcRenderer.send('show-save-options', content),
+  onShowSaveOptionsDialog: (callback: (content: string) => void) => {
+    ipcRenderer.on('show-save-options-dialog', (_, content) => callback(content))
+  },
+  onAddFileFromContextMenu: (callback: (path: string) => void) => {
+    ipcRenderer.on('add-file-from-context-menu', (_, path) => callback(path))
+  }
 }
 
 if (process.contextIsolated) {

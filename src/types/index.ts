@@ -122,6 +122,18 @@ export interface ElectronAPI {
   ocrImage: (imageBase64: string) => Promise<{ success: boolean; text?: string; error?: string }>
   onClipboardChanged: (callback: (item: ClipboardItem) => void) => void
   removeAllListeners: (channel: string) => void
+  // Context Menu
+  registerContextMenu: () => Promise<{ success: boolean; error?: string }>
+  unregisterContextMenu: () => Promise<{ success: boolean; error?: string }>
+  getContextMenuStatus: () => Promise<{ registered: boolean }>
+  // Shortcuts
+  registerShortcut: (shortcut: string, action: string) => Promise<{ success: boolean; error?: string }>
+  unregisterShortcut: (shortcut: string) => Promise<{ success: boolean; error?: string }>
+  // Copy Confirm
+  clipboardSave: (content: string) => void
+  showSaveOptions: (content: string) => void
+  onShowSaveOptionsDialog: (callback: (content: string) => void) => void
+  onAddFileFromContextMenu: (callback: (path: string) => void) => void
 }
 
 declare global {

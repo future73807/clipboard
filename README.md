@@ -381,7 +381,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] File: 文件类型图标映射 (FileIcon 组件)
   - [x] Shortcut: 快捷方式解析 (shortcut.ts 模块)
   - [x] Password: 密码管理模块 (PasswordManager 组件)
-  - [ ] Office: 文档预览集成 (待开发)
+  - [x] Office: 文档预览集成 (OfficePreview 组件)
 - [x] **分组与标签系统**
   - [x] 数据库表结构 (groups, tags, item_tags)
   - [x] 分组 CRUD 操作 (database.ts 中已实现)
@@ -391,16 +391,16 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] 版本快照联动 (VersionHistory 组件)
 
 ### 5.4 Phase 4: 高级特性
-- [ ] **办公文件处理**
-  - [ ] Word 预览
-  - [ ] Excel 预览
-  - [ ] PPT 预览
-  - [ ] PDF 预览
-  - [ ] 版本差异对比
-- [ ] **系统集成**
-  - [ ] 右键菜单注册
-  - [ ] 复制监听确认条
-  - [ ] 快捷键优化
+- [x] **办公文件处理**
+  - [x] Word 预览
+  - [x] Excel 预览
+  - [x] PPT 预览 (占位符，建议使用专业工具)
+  - [x] PDF 预览
+  - [x] 版本差异对比 (VersionHistory 组件)
+- [x] **系统集成**
+  - [x] 右键菜单注册 (contextMenu.ts)
+  - [x] 复制监听确认条 (CopyConfirmBar.tsx)
+  - [x] 快捷键优化 (preload/index.ts)
 
 ### 5.5 Phase 5: 测试与优化
 - [ ] **测试覆盖**
