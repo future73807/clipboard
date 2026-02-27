@@ -7,6 +7,8 @@ const uuid = require("uuid");
 const node_fs = require("node:fs");
 const node_crypto = require("node:crypto");
 const tesseract_js = require("tesseract.js");
+const node_child_process = require("node:child_process");
+const node_util = require("node:util");
 let db = null;
 function initializeDatabase() {
   try {
@@ -346,6 +348,124 @@ async function recognizeText(imageSource, lang = "chi_sim+eng") {
     console.error("OCR failed:", error);
     throw error;
   }
+}
+function detectContentType(content) {
+  if (content.startsWith("data:image/")) {
+    return "image";
+  }
+  if (content.includes("<html") || content.includes("<HTML")) {
+    return "html";
+  }
+  if (content.includes("{\\rtf")) {
+    return "rtf";
+  }
+  if (content.includes("http://") || content.includes("https://")) {
+    return "url";
+  }
+  return "text";
+}
+const execAsync = node_util.promisify(node_child_process.exec);
+const REGISTRY_KEY = "HKCR\\*\\shell\\AddToClipboard";
+const REGISTRY_KEY_DIRECTORY = "HKCR\\Directory\\shell\\AddToClipboard";
+const REGISTRY_KEY_BACKGROUND = "HKCR\\Directory\\Background\\shell\\AddToClipboard";
+function isWindows() {
+  return process.platform === "win32";
+}
+async function isAdmin() {
+  if (!isWindows()) return false;
+  try {
+    await execAsync("net session 2>&1");
+    return true;
+  } catch {
+    return false;
+  }
+}
+function getExePath() {
+  const exePath = electron.app.getPath("exe");
+  return exePath;
+}
+async function registerContextMenu() {
+  if (!isWindows()) {
+    return { success: false, error: "右键菜单仅支持 Windows 系统" };
+  }
+  const admin = await isAdmin();
+  if (!admin) {
+    return { success: false, error: "需要管理员权限才能注册右键菜单" };
+  }
+  try {
+    const exePath = getExePath();
+    await execAsync(
+      `reg add "${REGISTRY_KEY}" /ve /d "添加到超级剪贴板" /f`
+    );
+    await execAsync(
+      `reg add "${REGISTRY_KEY}\\command" /ve /d "${exePath} add-file \\"%1\\"" /f`
+    );
+    await execAsync(
+      `reg add "${REGISTRY_KEY_DIRECTORY}" /ve /d "添加到超级剪贴板" /f`
+    );
+    await execAsync(
+      `reg add "${REGISTRY_KEY_DIRECTORY}\\command" /ve /d "${exePath} add-file \\"%1\\"" /f`
+    );
+    await execAsync(
+      `reg add "${REGISTRY_KEY_BACKGROUND}" /ve /d "添加到超级剪贴板" /f`
+    );
+    await execAsync(
+      `reg add "${REGISTRY_KEY_BACKGROUND}\\command" /ve /d "${exePath} add-file \\"%V\\"" /f`
+    );
+    return { success: true };
+  } catch (error) {
+    console.error("注册右键菜单失败:", error);
+    return { success: false, error: "注册失败，请检查管理员权限" };
+  }
+}
+async function unregisterContextMenu() {
+  if (!isWindows()) {
+    return { success: false, error: "右键菜单仅支持 Windows 系统" };
+  }
+  const admin = await isAdmin();
+  if (!admin) {
+    return { success: false, error: "需要管理员权限才能注销右键菜单" };
+  }
+  try {
+    try {
+      await execAsync(`reg delete "${REGISTRY_KEY}" /f`);
+    } catch {
+    }
+    try {
+      await execAsync(`reg delete "${REGISTRY_KEY_DIRECTORY}" /f`);
+    } catch {
+    }
+    try {
+      await execAsync(`reg delete "${REGISTRY_KEY_BACKGROUND}" /f`);
+    } catch {
+    }
+    return { success: true };
+  } catch (error) {
+    console.error("注销右键菜单失败:", error);
+    return { success: false, error: "注销失败" };
+  }
+}
+async function isContextMenuRegistered() {
+  if (!isWindows()) return false;
+  try {
+    const { stdout } = await execAsync(
+      `reg query "${REGISTRY_KEY}" /ve 2>&1`
+    );
+    return stdout.includes("添加到超级剪贴板");
+  } catch {
+    return false;
+  }
+}
+function handleContextMenuArgs(argv) {
+  const addFileIndex = argv.indexOf("add-file");
+  if (addFileIndex !== -1 && argv[addFileIndex + 1]) {
+    return {
+      action: "add-file",
+      path: argv[addFileIndex + 1].replace(/^"|"$/g, "")
+      // 移除引号
+    };
+  }
+  return null;
 }
 const windowState = {
   main: {
@@ -823,5 +943,97 @@ electron.ipcMain.handle("ocr-image", async (_, imageBase64) => {
   } catch (error) {
     console.error("OCR failed:", error);
     return { success: false, error: "OCR failed" };
+  }
+});
+electron.ipcMain.handle("register-context-menu", async () => {
+  return await registerContextMenu();
+});
+electron.ipcMain.handle("unregister-context-menu", async () => {
+  return await unregisterContextMenu();
+});
+electron.ipcMain.handle("get-context-menu-status", async () => {
+  const registered = await isContextMenuRegistered();
+  return { registered };
+});
+electron.ipcMain.handle("register-shortcut", async (_, shortcut, action) => {
+  try {
+    const success = electron.globalShortcut.register(shortcut, () => {
+      switch (action) {
+        case "show-main":
+          if (mainWindow) {
+            mainWindow.show();
+            mainWindow.focus();
+          }
+          break;
+        case "show-floating":
+          showFloatingWindow();
+          break;
+        case "toggle-main":
+          if (mainWindow) {
+            if (mainWindow.isVisible()) {
+              mainWindow.hide();
+            } else {
+              mainWindow.show();
+              mainWindow.focus();
+            }
+          }
+          break;
+        default:
+          console.log("Unknown action:", action);
+      }
+    });
+    return { success };
+  } catch (error) {
+    console.error("注册快捷键失败:", error);
+    return { success: false, error: "注册快捷键失败" };
+  }
+});
+electron.ipcMain.handle("unregister-shortcut", async (_, shortcut) => {
+  try {
+    electron.globalShortcut.unregister(shortcut);
+    return { success: true };
+  } catch (error) {
+    console.error("注销快捷键失败:", error);
+    return { success: false, error: "注销快捷键失败" };
+  }
+});
+electron.ipcMain.on("clipboard-save", (_, content) => {
+  const newItem = {
+    id: Date.now().toString(),
+    content,
+    type: detectContentType(content),
+    timestamp: (/* @__PURE__ */ new Date()).toISOString(),
+    size: content.length
+  };
+  try {
+    addClipboardItem({
+      content: newItem.content,
+      type: newItem.type,
+      timestamp: newItem.timestamp,
+      size: newItem.size
+    });
+    mainWindow?.webContents.send("clipboard-changed", newItem);
+    floatingWindow?.webContents.send("clipboard-changed", newItem);
+  } catch (error) {
+    console.error("保存剪贴板内容失败:", error);
+  }
+});
+electron.ipcMain.on("show-save-options", (_, content) => {
+  if (mainWindow) {
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send("show-save-options-dialog", content);
+  }
+});
+electron.app.on("second-instance", (_, argv) => {
+  const args = handleContextMenuArgs(argv);
+  if (args) {
+    if (args.action === "add-file") {
+      if (mainWindow) {
+        mainWindow.show();
+        mainWindow.focus();
+        mainWindow.webContents.send("add-file-from-context-menu", args.path);
+      }
+    }
   }
 });
