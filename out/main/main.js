@@ -17,6 +17,7 @@ function initializeDatabase() {
         id TEXT PRIMARY KEY,
         content TEXT NOT NULL,
         type TEXT NOT NULL,
+        title TEXT,
         timestamp TEXT NOT NULL,
         size INTEGER NOT NULL,
         formats TEXT,
@@ -27,20 +28,92 @@ function initializeDatabase() {
         iv TEXT,
         auth_tag TEXT,
         salt TEXT,
+        group_id TEXT,
+        metadata TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS groups (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL,
+        parent_id TEXT,
+        icon TEXT,
+        color TEXT,
+        sort_order INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (parent_id) REFERENCES groups(id)
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id TEXT PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        color TEXT NOT NULL DEFAULT 'cyan',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS item_tags (
+        item_id TEXT NOT NULL,
+        tag_id TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (item_id, tag_id),
+        FOREIGN KEY (item_id) REFERENCES clipboard_history(id),
+        FOREIGN KEY (tag_id) REFERENCES tags(id)
+      )
+    `);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS versions (
+        id TEXT PRIMARY KEY,
+        item_id TEXT NOT NULL,
+        content TEXT NOT NULL,
+        hash TEXT NOT NULL,
+        changes TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (item_id) REFERENCES clipboard_history(id)
       )
     `);
     try {
       db.exec("ALTER TABLE clipboard_history ADD COLUMN is_encrypted BOOLEAN DEFAULT 0");
+    } catch (e) {
+    }
+    try {
       db.exec("ALTER TABLE clipboard_history ADD COLUMN iv TEXT");
+    } catch (e) {
+    }
+    try {
       db.exec("ALTER TABLE clipboard_history ADD COLUMN auth_tag TEXT");
+    } catch (e) {
+    }
+    try {
       db.exec("ALTER TABLE clipboard_history ADD COLUMN salt TEXT");
+    } catch (e) {
+    }
+    try {
+      db.exec("ALTER TABLE clipboard_history ADD COLUMN title TEXT");
+    } catch (e) {
+    }
+    try {
+      db.exec("ALTER TABLE clipboard_history ADD COLUMN group_id TEXT");
+    } catch (e) {
+    }
+    try {
+      db.exec("ALTER TABLE clipboard_history ADD COLUMN metadata TEXT");
+    } catch (e) {
+    }
+    try {
+      db.exec("ALTER TABLE clipboard_history ADD COLUMN updated_at DATETIME DEFAULT CURRENT_TIMESTAMP");
     } catch (e) {
     }
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_timestamp ON clipboard_history(timestamp DESC);
       CREATE INDEX IF NOT EXISTS idx_type ON clipboard_history(type);
       CREATE INDEX IF NOT EXISTS idx_content ON clipboard_history(content);
+      CREATE INDEX IF NOT EXISTS idx_group ON clipboard_history(group_id);
+      CREATE INDEX IF NOT EXISTS idx_parent ON groups(parent_id);
+      CREATE INDEX IF NOT EXISTS idx_item_versions ON versions(item_id);
     `);
     console.log("数据库初始化成功");
   } catch (error) {
@@ -60,14 +133,15 @@ function addClipboardItem(item) {
   try {
     const stmt = db2.prepare(`
       INSERT INTO clipboard_history (
-        id, content, type, timestamp, size, formats, full_content,
-        is_encrypted, iv, auth_tag, salt, tags
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        id, content, type, title, timestamp, size, formats, full_content,
+        is_encrypted, iv, auth_tag, salt, tags, group_id, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     stmt.run(
       id,
       item.content,
       item.type,
+      item.title || null,
       item.timestamp,
       item.size,
       item.formats ? JSON.stringify(item.formats) : null,
@@ -76,7 +150,9 @@ function addClipboardItem(item) {
       item.encryptionData?.iv || null,
       item.encryptionData?.authTag || null,
       item.encryptionData?.salt || null,
-      item.tags ? JSON.stringify(item.tags) : null
+      item.tags ? JSON.stringify(item.tags) : null,
+      item.groupId || null,
+      item.metadata ? JSON.stringify(item.metadata) : null
     );
     return { ...item, id };
   } catch (error) {
@@ -88,27 +164,12 @@ function getClipboardHistory(limit = 100) {
   const db2 = getDatabase();
   try {
     const stmt = db2.prepare(`
-      SELECT * FROM clipboard_history 
-      ORDER BY timestamp DESC 
+      SELECT * FROM clipboard_history
+      ORDER BY timestamp DESC
       LIMIT ?
     `);
     const rows = stmt.all(limit);
-    return rows.map((row) => ({
-      id: row.id,
-      content: row.content,
-      type: row.type,
-      timestamp: row.timestamp,
-      size: row.size,
-      formats: row.formats ? JSON.parse(row.formats) : void 0,
-      fullContent: row.full_content ? JSON.parse(row.full_content) : void 0,
-      isEncrypted: !!row.is_encrypted,
-      encryptionData: row.is_encrypted ? {
-        iv: row.iv,
-        authTag: row.auth_tag,
-        salt: row.salt
-      } : void 0,
-      tags: row.tags ? JSON.parse(row.tags) : void 0
-    }));
+    return rows.map((row) => mapRowToItem(row));
   } catch (error) {
     console.error("获取剪贴板历史失败:", error);
     throw error;
@@ -117,6 +178,8 @@ function getClipboardHistory(limit = 100) {
 function deleteClipboardItem(id) {
   const db2 = getDatabase();
   try {
+    db2.prepare("DELETE FROM versions WHERE item_id = ?").run(id);
+    db2.prepare("DELETE FROM item_tags WHERE item_id = ?").run(id);
     const stmt = db2.prepare("DELETE FROM clipboard_history WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
@@ -128,6 +191,8 @@ function deleteClipboardItem(id) {
 function clearClipboardHistory() {
   const db2 = getDatabase();
   try {
+    db2.exec("DELETE FROM versions");
+    db2.exec("DELETE FROM item_tags");
     db2.exec("DELETE FROM clipboard_history");
     console.log("剪贴板历史已清空");
   } catch (error) {
@@ -148,6 +213,10 @@ function updateClipboardItem(id, updates) {
       fields.push("type = ?");
       values.push(updates.type);
     }
+    if (updates.title !== void 0) {
+      fields.push("title = ?");
+      values.push(updates.title);
+    }
     if (updates.formats !== void 0) {
       fields.push("formats = ?");
       values.push(JSON.stringify(updates.formats));
@@ -160,9 +229,22 @@ function updateClipboardItem(id, updates) {
       fields.push("tags = ?");
       values.push(JSON.stringify(updates.tags));
     }
+    if (updates.isFavorite !== void 0) {
+      fields.push("is_favorite = ?");
+      values.push(updates.isFavorite ? 1 : 0);
+    }
+    if (updates.groupId !== void 0) {
+      fields.push("group_id = ?");
+      values.push(updates.groupId);
+    }
+    if (updates.metadata !== void 0) {
+      fields.push("metadata = ?");
+      values.push(JSON.stringify(updates.metadata));
+    }
     if (fields.length === 0) {
       return false;
     }
+    fields.push("updated_at = CURRENT_TIMESTAMP");
     values.push(id);
     const stmt = db2.prepare(`UPDATE clipboard_history SET ${fields.join(", ")} WHERE id = ?`);
     const result = stmt.run(...values);
@@ -171,6 +253,28 @@ function updateClipboardItem(id, updates) {
     console.error("更新剪贴板项目失败:", error);
     throw error;
   }
+}
+function mapRowToItem(row) {
+  return {
+    id: row.id,
+    content: row.content,
+    type: row.type,
+    title: row.title || void 0,
+    timestamp: row.timestamp,
+    size: row.size,
+    formats: row.formats ? JSON.parse(row.formats) : void 0,
+    fullContent: row.full_content ? JSON.parse(row.full_content) : void 0,
+    isEncrypted: !!row.is_encrypted,
+    encryptionData: row.is_encrypted ? {
+      iv: row.iv,
+      authTag: row.auth_tag,
+      salt: row.salt
+    } : void 0,
+    isFavorite: !!row.is_favorite,
+    tags: row.tags ? JSON.parse(row.tags) : void 0,
+    groupId: row.group_id || void 0,
+    metadata: row.metadata ? JSON.parse(row.metadata) : void 0
+  };
 }
 const defaultSettings = {
   enableEncryption: false,

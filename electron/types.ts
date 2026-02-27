@@ -13,6 +13,9 @@ export interface WindowState {
   }
 }
 
+// 剪贴板类型 (包含历史兼容类型)
+export type ClipboardType = 'text' | 'html' | 'rtf' | 'image' | 'url' | 'code' | 'file' | 'shortcut' | 'password' | 'office'
+
 export interface ClipboardContent {
   formats: string[]
   content: {
@@ -28,7 +31,8 @@ export interface ClipboardContent {
 export interface ClipboardHistoryItem {
   id: string
   content: string
-  type: 'text' | 'html' | 'rtf' | 'image' | 'url'
+  type: ClipboardType
+  title?: string
   timestamp: string
   size: number
   formats?: string[]
@@ -45,7 +49,10 @@ export interface ClipboardHistoryItem {
     authTag: string
     salt: string
   }
+  isFavorite?: boolean
+  groupId?: string
   tags?: string[]
+  metadata?: Record<string, unknown>
 }
 
 export interface AppSettings {
