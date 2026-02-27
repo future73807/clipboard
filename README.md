@@ -408,7 +408,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] 加密模块测试 (13 tests, 100% coverage)
   - [x] 密码管理器测试 (16 tests)
   - [x] 工具函数测试 (18 tests)
-  - [ ] 文件解析测试
+  - [x] 文件图标解析测试 (59 tests)
   - [ ] 版本差异算法测试
   - [ ] E2E 测试
 - [x] **性能优化**
@@ -473,7 +473,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
 - [x] 加密模块单元测试 (13 tests, 100% coverage)
 - [x] 密码管理器单元测试 (16 tests)
 - [x] 工具函数单元测试 (18 tests)
-- [ ] 文件解析测试
+- [x] 文件图标解析测试 (59 tests)
 - [ ] 版本差异算法测试
 - [ ] E2E 测试
 
