@@ -1,0 +1,112 @@
+name: Build and Release Windows Installer
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: 'Release type'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+
+      - name: Generate version tag
+        id: version
+        shell: bash
+        run: |
+          # 获取当前日期 (YYMMDD格式)
+          DATE=$(date +%y%m%d)
+
+          # 获取同一天已有的标签数量
+          EXISTING_TAGS=$(git tag -l "${DATE}_*" | wc -l)
+
+          # 生成三位数流水号
+          SEQUENCE=$(printf "%03d" $((EXISTING_TAGS + 1)))
+
+          # 组合版本标签
+          VERSION_TAG="${DATE}_${SEQUENCE}"
+
+          echo "version_tag=${VERSION_TAG}" >> $GITHUB_OUTPUT
+          echo "Generated version tag: ${VERSION_TAG}"
+
+      - name: Build Windows installer
+        run: npm run build:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: List built artifacts
+        shell: bash
+        run: |
+          echo "Built artifacts:"
+          ls -la dist/ || ls -la out/ || echo "No dist/out folder found"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer-${{ steps.version.outputs.version_tag }}
+          path: |
+            dist/*.exe
+            dist/*.blockmap
+          retention-days: 30
+
+      - name: Create Release
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version_tag }}
+          name: Release ${{ steps.version.outputs.version_tag }}
+          body: |
+            ## 超级剪贴板 v${{ steps.version.outputs.version_tag }}
+
+            ### 更新内容
+            - 自动构建发布
+
+            ### 安装说明
+            下载 `.exe` 安装包，双击运行即可安装。
+
+            ### 系统要求
+            - Windows 10/11 64位
+          files: |
+            dist/*.exe
+            dist/*.blockmap
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag ${{ steps.version.outputs.version_tag }}
+          git push origin ${{ steps.version.outputs.version_tag }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
