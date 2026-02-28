@@ -14,6 +14,34 @@ import { registerContextMenu, unregisterContextMenu, isContextMenuRegistered, ha
 // 全局退出标志
 let isQuitting = false
 
+// 单实例锁定 - 确保只有一个应用实例运行
+const gotTheLock = app.requestSingleInstanceLock()
+
+if (!gotTheLock) {
+  // 如果获取不到锁，说明已有实例运行，退出
+  app.quit()
+} else {
+  // 当第二个实例启动时，聚焦到已有窗口
+  app.on('second-instance', (_, argv) => {
+    // 显示主窗口
+    if (mainWindow) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
+    // 处理从右键菜单启动的参数
+    const args = handleContextMenuArgs(argv)
+    if (args) {
+      if (args.action === 'add-file') {
+        if (mainWindow) {
+          mainWindow.show()
+          mainWindow.focus()
+          mainWindow.webContents.send('add-file-from-context-menu', args.path)
+        }
+      }
+    }
+  })
+}
+
 const windowState: WindowState = {
   main: {
     width: 1200,
@@ -151,11 +179,32 @@ function createFloatingWindow(): void {
 }
 
 function createTray(): void {
-  const iconPath = join(__dirname, '../../resources/icon.png')
-  const trayIcon = nativeImage.createFromPath(iconPath)
-  
-  tray = new Tray(trayIcon.resize({ width: 16, height: 16 }))
-  
+  let trayIcon: Electron.NativeImage
+
+  try {
+    const iconPath = join(__dirname, '../../resources/icon.png')
+    trayIcon = nativeImage.createFromPath(iconPath)
+
+    // 如果图标加载失败，创建一个默认图标
+    if (trayIcon.isEmpty()) {
+      // 创建一个 16x16 的蓝色方块作为默认图标
+      trayIcon = nativeImage.createEmpty()
+    }
+  } catch (error) {
+    console.error('加载托盘图标失败:', error)
+    trayIcon = nativeImage.createEmpty()
+  }
+
+  // 使用原始图标或调整大小后的图标
+  const iconToUse = trayIcon.isEmpty() ? trayIcon : trayIcon.resize({ width: 16, height: 16 })
+
+  try {
+    tray = new Tray(iconToUse.isEmpty() ? nativeImage.createEmpty() : iconToUse)
+  } catch (error) {
+    console.error('创建托盘失败:', error)
+    return
+  }
+
   const contextMenu = Menu.buildFromTemplate([
     {
       label: '显示主窗口',
@@ -180,10 +229,10 @@ function createTray(): void {
       }
     }
   ])
-  
+
   tray.setToolTip('剪贴板管理器')
   tray.setContextMenu(contextMenu)
-  
+
   tray.on('click', () => {
     if (mainWindow) {
       if (mainWindow.isVisible()) {
@@ -835,20 +884,5 @@ ipcMain.on('show-save-options', (_, content: string) => {
     mainWindow.show()
     mainWindow.focus()
     mainWindow.webContents.send('show-save-options-dialog', content)
-  }
-})
-
-// 处理从右键菜单启动的参数
-app.on('second-instance', (_, argv) => {
-  const args = handleContextMenuArgs(argv)
-  if (args) {
-    if (args.action === 'add-file') {
-      // 显示主窗口并添加文件
-      if (mainWindow) {
-        mainWindow.show()
-        mainWindow.focus()
-        mainWindow.webContents.send('add-file-from-context-menu', args.path)
-      }
-    }
   }
 })

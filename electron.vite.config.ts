@@ -41,7 +41,17 @@ export default defineConfig({
       allowedHosts: ['.monkeycode-ai.online']
     },
     build: {
-      outDir: 'out/renderer'
+      outDir: 'out/renderer',
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'index.html')
+        },
+        output: {
+          entryFileNames: 'assets/[name]-[hash].js',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          assetFileNames: 'assets/[name]-[hash].[ext]'
+        }
+      }
     }
   }
 })

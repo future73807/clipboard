@@ -353,7 +353,10 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] 新增 groups、tags、versions 表
   - [x] 扩展 clipboard_history 表字段 (group_id, tags, metadata 等)
   - [x] 创建数据库索引
-  - [ ] 编写数据库迁移脚本 (可选优化)
+- [x] **应用启动优化**
+  - [x] 添加单实例锁定，确保双击打开主窗口
+  - [x] 修复构建输出路径问题
+  - [x] 创建应用资源文件 (图标等)
 
 ### 5.2 Phase 2: UI 组件开发
 - [x] **布局组件**
@@ -409,7 +412,7 @@ CREATE INDEX idx_item_versions ON versions(item_id);
   - [x] 密码管理器测试 (16 tests)
   - [x] 工具函数测试 (18 tests)
   - [x] 文件图标解析测试 (59 tests)
-  - [ ] 版本差异算法测试
+  - [x] 版本差异算法测试 (20 tests)
   - [ ] E2E 测试
 - [x] **性能优化**
   - [x] 虚拟滚动实现 (@tanstack/react-virtual)
