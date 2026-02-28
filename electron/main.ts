@@ -82,8 +82,26 @@ function createMainWindow(): void {
     }
   })
 
+  // 窗口准备好后显示
   mainWindow.on('ready-to-show', () => {
+    console.log('主窗口 ready-to-show 事件触发')
     mainWindow?.show()
+    mainWindow?.focus()
+  })
+
+  // 页面加载失败时的处理
+  mainWindow.webContents.on('did-fail-load', (_, errorCode, errorDescription) => {
+    console.error('页面加载失败:', errorCode, errorDescription)
+  })
+
+  // 页面加载完成后的处理（备用显示逻辑）
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('页面加载完成')
+    // 如果窗口还没显示，强制显示
+    if (mainWindow && !mainWindow.isVisible()) {
+      mainWindow.show()
+      mainWindow.focus()
+    }
   })
 
   // 关闭窗口时隐藏到系统托盘而不是退出
@@ -108,7 +126,9 @@ function createMainWindow(): void {
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
     mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
   } else {
-    mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+    const htmlPath = join(__dirname, '../renderer/index.html')
+    console.log('加载 HTML 文件:', htmlPath)
+    mainWindow.loadFile(htmlPath)
   }
 }
 
